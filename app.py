@@ -33,26 +33,49 @@ def initDb():
 def users():
     loginData = request.get_json()
     username = loginData['username']
+    password = loginData['password']
 
-    sql = "SELECT * FROM user WHERE username = ?"
-    data = []
     db = getDb()
-    # Execute the query with `username` as a parameter
-    for row in db.cursor().execute(sql, (username,)):
-        data.append(str(row))
+    getUser = "SELECT * FROM user WHERE username = ?"
+    user = db.cursor().execute(getUser,(username,)).fetchall()
 
+    if len(user)==0:
+        db = closeDbConnection(exception=None)
+        data = {"error":"Wrong Username Or Password"}
+        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        return response
+    
+    userPassword = user[0][2]
+    if  userPassword != bcrypt.hashpw(password.encode ("utf -8 "), userPassword):
+        db = closeDbConnection(exception=None)
+        data = {"error":"Wrong Username Or Password"}
+        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        return response
+    
     db = closeDbConnection(exception=None)
-    return data
+
+    useUsername = user[0][1]
+    data = {"success":"Login Succesfull", "user":useUsername}
+    response = api.response_class(response=json.dumps(data), status=200, mimetype='application/json')
+
+    return response
 
 @api.route("/register", methods=['POST'])
 def register():
+
     registerData = request.get_json()
     username = registerData['username']
     password = registerData['password']
-    if len(username) < 4 :
-        return json.dumps({"error":"Username must be atleast 4 character long"})
-    if len(password) < 8 :
-        return json.dumps({"error":"Password must be atleast 8 character long"})
+
+    if len(username) < 4 or len(username) > 20 :
+        data = {"error":"Username must be between 4 and 20 character long"}
+        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        return response
+    if len(password) < 8 or len(password) > 50 :
+        data = {"error":"Password must be between 8 and 50 characters long"}
+        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        return response
+    
     db = getDb()
     sql_getUsersByUsername = "SELECT * FROM user WHERE username = ?"
     
@@ -69,4 +92,8 @@ def register():
 
     db.commit()
     db = closeDbConnection(exception=None)
-    return json.dumps({"success":"Account Created"})
+
+    data = {"success":"Account Created"}
+    response = api.response_class(response=json.dumps(data), status=200, mimetype='application/json')
+
+    return response
