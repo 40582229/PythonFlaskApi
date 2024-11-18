@@ -3,6 +3,7 @@ from flask_cors import CORS
 import json
 import sqlite3
 import bcrypt
+from jwtGenerator import generateJwtToken
 api = Flask(__name__)
 dbLocation = 'db/sqlite3.db'
 CORS(api)
@@ -54,8 +55,8 @@ def users():
     
     db = closeDbConnection(exception=None)
 
-    useUsername = user[0][1]
-    data = {"success":"Login Succesfull", "user":useUsername}
+    userUsername = user[0][1]
+    data = {"success":"Login Succesfull", "token": generateJwtToken(userUsername)}
     response = api.response_class(response=json.dumps(data), status=200, mimetype='application/json')
 
     return response
