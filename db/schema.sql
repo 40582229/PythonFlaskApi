@@ -6,3 +6,14 @@ CREATE TABLE user(
     password TEXT NOT NULL,
     token TEXT
 );
+
+DROP TABLE if EXISTS excersises;
+
+CREATE TABLE excersises(
+    excersiseId INTEGER PRIMARY KEY AUTOINCREMENT,
+    userid INTEGER NOT NULL,
+    reps INTEGER,
+    eSets INTEGER,
+    crdate TEXT,
+    FOREIGN KEY (userid) REFERENCES user(userid)
+);
