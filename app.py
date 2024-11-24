@@ -3,6 +3,8 @@ from flask_cors import CORS
 import json
 import sqlite3
 import bcrypt
+import jwt
+import os
 from jwtGenerator import generateJwtToken
 api = Flask(__name__)
 dbLocation = 'db/sqlite3.db'
@@ -96,5 +98,19 @@ def register():
 
     data = {"success":"Account Created"}
     response = api.response_class(response=json.dumps(data), status=200, mimetype='application/json')
+
+    return response
+
+@api.route("/excersise", methods=['POST'])
+def excersise():
+
+    registerData = request.get_json()
+    userToken = registerData['token']
+    excersise = registerData['excersise']
+    flaskSecret = os.getenv('flaskSecret')
+    algorithm = os.getenv('algorithm')
+    decodedToken = jwt.decode(userToken, flaskSecret, algorithms=[algorithm])
+
+    response = api.response_class(response=json.dumps({"asd":excersise, "token":decodedToken}), status=200, mimetype='application/json')
 
     return response

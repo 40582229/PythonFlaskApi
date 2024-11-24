@@ -10,7 +10,7 @@ def generateJwtToken(username):
 
     payload = {
         'userId':username,
-        'exp': datetime.now(timezone.utc) + timedelta(seconds=20)
+        'exp': datetime.now(timezone.utc) + timedelta(seconds=6000)
     }
     token = jwt.encode(payload, flaskSecret, algorithm)
 
