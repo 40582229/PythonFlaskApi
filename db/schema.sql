@@ -11,6 +11,7 @@ DROP TABLE if EXISTS excersises;
 
 CREATE TABLE excersises(
     excersiseId INTEGER PRIMARY KEY AUTOINCREMENT,
+    excersisename text NOT NULL,
     userid INTEGER NOT NULL,
     reps INTEGER,
     eSets INTEGER,

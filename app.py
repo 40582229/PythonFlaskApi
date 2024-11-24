@@ -109,8 +109,55 @@ def excersise():
     excersise = registerData['excersise']
     flaskSecret = os.getenv('flaskSecret')
     algorithm = os.getenv('algorithm')
-    decodedToken = jwt.decode(userToken, flaskSecret, algorithms=[algorithm])
 
-    response = api.response_class(response=json.dumps({"asd":excersise, "token":decodedToken}), status=200, mimetype='application/json')
+    decodedToken = jwt.decode(userToken, flaskSecret, algorithms=[algorithm])
+    db = getDb()
+    getUser = "SELECT * FROM user WHERE username = ?"
+    l = decodedToken['userId']
+    user = db.cursor().execute(getUser,(decodedToken['userId'],)).fetchall()
+    if len(user)==0:
+        db = closeDbConnection(exception=None)
+        data = {"error":"Bad Request"}
+        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        return response
+    
+    db.cursor().execute(
+    'INSERT INTO excersises (excersisename,userid, reps, eSets, crdate) VALUES (?, ?, ?, ?, ?)', 
+    (excersise['name'],user[0][0], excersise['reps'],excersise['sets'], None))
+
+    db.commit()
+    db = closeDbConnection(exception=None)
+    response = api.response_class(response=json.dumps({"success":"Excersise Added"}), status=200, mimetype='application/json')
+
+    return response
+
+@api.route("/getExcersise", methods=['POST'])
+def getExcersise():
+
+    registerData = request.get_json()
+    userToken = registerData['token']
+    flaskSecret = os.getenv('flaskSecret')
+    algorithm = os.getenv('algorithm')
+
+    decodedToken = jwt.decode(userToken, flaskSecret, algorithms=[algorithm])
+    db = getDb()
+    getUserExcersises = "SELECT * FROM excersises WHERE userid = ?"
+    getUserUserId = "select userid from user where username = ?"
+    userId = db.cursor().execute(getUserUserId,(decodedToken['userId'],)).fetchall()
+    if len(userId)==0:
+        db = closeDbConnection(exception=None)
+        data = {"error":"Bad Request"}
+        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        return response
+
+    userExcersises = db.cursor().execute(getUserExcersises,(userId[0][0],)).fetchall()
+    proccesedUserExcersises = []
+    for excersise in userExcersises:
+        tempEx = {'name': excersise[1], 'reps':excersise[3], 'sets':excersise[4]}
+        proccesedUserExcersises.append(tempEx)
+
+    db.commit()
+    db = closeDbConnection(exception=None)
+    response = api.response_class(response=json.dumps({"excersises":proccesedUserExcersises}), status=200, mimetype='application/json')
 
     return response
