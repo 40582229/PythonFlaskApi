@@ -10,6 +10,9 @@ api = Flask(__name__)
 dbLocation = 'db/sqlite3.db'
 CORS(api)
 
+flaskSecret = os.getenv('flaskSecret')
+algorithm = os.getenv('algorithm')
+
 def getDb():
     db = getattr(g, 'db', None)
     if db is None:
@@ -31,6 +34,45 @@ def initDb():
             db.cursor().executescript(f.read())
         db.commit()
 
+def updateUserToken(db, username):
+    updateToken = "UPDATE user set token = ? where username = ?"
+    userToken = generateJwtToken(username)
+    db.cursor().execute(updateToken,(userToken,username,))
+    db.commit()
+    return userToken
+
+
+def validateCredentials(username, password):
+    db = getDb()
+    getUser = "SELECT * FROM user WHERE username = ?"
+    user = db.cursor().execute(getUser,(username,)).fetchall()
+    userPassword = user[0][2]
+    if len(user)==0 or userPassword != bcrypt.hashpw(password.encode ("utf -8 "), userPassword):
+        
+        db = closeDbConnection(exception=None)
+        data = {"error":"Wrong Username Or Password"}
+        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        return response
+    
+    
+    userToken = updateUserToken(db,username)
+    data = {"success":"Login Succesfull", "token": userToken}
+    db = closeDbConnection(exception=None)
+    return api.response_class(response=json.dumps(data), status=200, mimetype='application/json')
+
+def verifyUser(db, userToken):
+    try:
+        decodedToken = jwt.decode(userToken, flaskSecret, algorithms=[algorithm])
+        getUserUsername = "select * from user where username = ? and token = ?"
+        user = db.cursor().execute(getUserUsername,(decodedToken['userId'],userToken,)).fetchall()
+        if len(user) == 0:
+            raise jwt.InvalidTokenError
+        return user
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError) as e:
+        print({"Error": e})
+        return {"error":"Bad Request"}
+    
+
 
 @api.route("/login", methods=['POST'])
 def users():
@@ -38,30 +80,7 @@ def users():
     username = loginData['username']
     password = loginData['password']
 
-    db = getDb()
-    getUser = "SELECT * FROM user WHERE username = ?"
-    user = db.cursor().execute(getUser,(username,)).fetchall()
-
-    if len(user)==0:
-        db = closeDbConnection(exception=None)
-        data = {"error":"Wrong Username Or Password"}
-        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
-        return response
-    
-    userPassword = user[0][2]
-    if  userPassword != bcrypt.hashpw(password.encode ("utf -8 "), userPassword):
-        db = closeDbConnection(exception=None)
-        data = {"error":"Wrong Username Or Password"}
-        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
-        return response
-    
-    db = closeDbConnection(exception=None)
-
-    userUsername = user[0][1]
-    data = {"success":"Login Succesfull", "token": generateJwtToken(userUsername)}
-    response = api.response_class(response=json.dumps(data), status=200, mimetype='application/json')
-
-    return response
+    return validateCredentials(username, password)
 
 @api.route("/register", methods=['POST'])
 def register():
@@ -107,19 +126,16 @@ def excersise():
     registerData = request.get_json()
     userToken = registerData['token']
     excersise = registerData['excersise']
-    flaskSecret = os.getenv('flaskSecret')
-    algorithm = os.getenv('algorithm')
 
-    decodedToken = jwt.decode(userToken, flaskSecret, algorithms=[algorithm])
+
+
     db = getDb()
-    getUser = "SELECT * FROM user WHERE username = ?"
-    l = decodedToken['userId']
-    user = db.cursor().execute(getUser,(decodedToken['userId'],)).fetchall()
-    if len(user)==0:
+    user = verifyUser(db, userToken)
+    if 'error' in user:
         db = closeDbConnection(exception=None)
-        data = {"error":"Bad Request"}
-        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        response = api.response_class(response=json.dumps(user), status=400, mimetype='application/json')
         return response
+
     
     db.cursor().execute(
     'INSERT INTO excersises (excersisename,userid, reps, eSets, crdate) VALUES (?, ?, ?, ?, ?)', 
@@ -136,21 +152,18 @@ def getExcersise():
 
     registerData = request.get_json()
     userToken = registerData['token']
-    flaskSecret = os.getenv('flaskSecret')
-    algorithm = os.getenv('algorithm')
 
-    decodedToken = jwt.decode(userToken, flaskSecret, algorithms=[algorithm])
     db = getDb()
     getUserExcersises = "SELECT * FROM excersises WHERE userid = ?"
-    getUserUserId = "select userid from user where username = ?"
-    userId = db.cursor().execute(getUserUserId,(decodedToken['userId'],)).fetchall()
-    if len(userId)==0:
+    
+ 
+    user = verifyUser(db, userToken)
+    if 'error' in user:
         db = closeDbConnection(exception=None)
-        data = {"error":"Bad Request"}
-        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        response = api.response_class(response=json.dumps(user), status=400, mimetype='application/json')
         return response
 
-    userExcersises = db.cursor().execute(getUserExcersises,(userId[0][0],)).fetchall()
+    userExcersises = db.cursor().execute(getUserExcersises,(user[0][0],)).fetchall()
     proccesedUserExcersises = []
     for excersise in userExcersises:
         tempEx = {'name': excersise[1], 'reps':excersise[3], 'sets':excersise[4]}
