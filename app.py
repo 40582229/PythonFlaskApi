@@ -135,11 +135,11 @@ def excersise():
         db = closeDbConnection(exception=None)
         response = api.response_class(response=json.dumps(user), status=400, mimetype='application/json')
         return response
-
+    
     
     db.cursor().execute(
-    'INSERT INTO excersises (excersisename,userid, reps, eSets, crdate) VALUES (?, ?, ?, ?, ?)', 
-    (excersise['name'],user[0][0], excersise['reps'],excersise['sets'], None))
+    'INSERT INTO excersises (excersisename,userid, reps, weight, eSets, crdate) VALUES (?, ?, ?, ?, ?, ?)', 
+    (excersise['name'],user[0][0], excersise['reps'],excersise['weight'],excersise['sets'], excersise['date']))
 
     db.commit()
     db = closeDbConnection(exception=None)
@@ -166,7 +166,7 @@ def getExcersise():
     userExcersises = db.cursor().execute(getUserExcersises,(user[0][0],)).fetchall()
     proccesedUserExcersises = []
     for excersise in userExcersises:
-        tempEx = {'name': excersise[1], 'reps':excersise[3], 'sets':excersise[4]}
+        tempEx = {'name': excersise[1], 'reps':excersise[3], 'weight':excersise[4],'sets':excersise[5], 'date':excersise[6]}
         proccesedUserExcersises.append(tempEx)
 
     db.commit()

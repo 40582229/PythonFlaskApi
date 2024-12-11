@@ -14,6 +14,7 @@ CREATE TABLE excersises(
     excersisename text NOT NULL,
     userid INTEGER NOT NULL,
     reps INTEGER,
+    weight INTEGER,
     eSets INTEGER,
     crdate TEXT,
     FOREIGN KEY (userid) REFERENCES user(userid)
