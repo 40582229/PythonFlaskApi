@@ -46,14 +46,19 @@ def validateCredentials(username, password):
     db = getDb()
     getUser = "SELECT * FROM user WHERE username = ?"
     user = db.cursor().execute(getUser,(username,)).fetchall()
-    userPassword = user[0][2]
-    if len(user)==0 or userPassword != bcrypt.hashpw(password.encode ("utf -8 "), userPassword):
-        
+    
+    if len(user)==0 :
         db = closeDbConnection(exception=None)
         data = {"error":"Wrong Username Or Password"}
         response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
         return response
-    
+        
+    userPassword = user[0][2]
+    if userPassword != bcrypt.hashpw(password.encode ("utf -8 "), userPassword):
+        db = closeDbConnection(exception=None)
+        data = {"error":"Wrong Username Or Password"}
+        response = api.response_class(response=json.dumps(data), status=400, mimetype='application/json')
+        return response
     
     userToken = updateUserToken(db,username)
     data = {"success":"Login Succesfull", "token": userToken}
