@@ -1,0 +1,5 @@
+pip install flask
+pip install flask-cors
+pip install bcrypt
+pip install PyJWT
+pip install python-dotenv
